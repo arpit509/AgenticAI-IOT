@@ -50,25 +50,8 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   void initState() {
     super.initState();
-    // _pages = [
-    //   const HomePage(),
-    //   const SampleNavigationApp(),
-    //   const AccountsPage(),
-    // ];
+    _pages = [const HomePage()];
   }
-
-  // void _onItemTapped(int index) {
-  //   if (index == 2) {
-  //     Navigator.push(
-  //       context,
-  //       MaterialPageRoute(builder: (context) => const AccountsPage()),
-  //     );
-  //   } else {
-  //     setState(() {
-  //       _currentIndex = index;
-  //     });
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +81,7 @@ class _LandingScreenState extends State<LandingScreen> {
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: _onItemTapped,
+
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Maps'),
