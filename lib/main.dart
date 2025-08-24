@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'app.dart';
+import 'account.dart';
 
 void main() => runApp(const MyApp());
 
@@ -50,7 +52,7 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   void initState() {
     super.initState();
-    _pages = [const HomePage()];
+    _pages = [const HomePage(), const AccountsPage()];
   }
 
   @override
