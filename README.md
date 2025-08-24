@@ -1,9 +1,9 @@
-🟡 Golden Hours
+##🟡 Golden Hours
 
   - Golden Hours is an Agentic AI system designed to make accident management faster, safer, and more efficient.
   - It integrates IoT sensors, AI decision-making, and smart navigation to reduce response times and save lives.
 
-🌍 Problem Statement
+#🌍 Problem Statement
 
   - Road accidents often go undetected or unreported on time, leading to delays in medical help. The first 60 minutes (Golden Hour) after an accident are crucial for   survival. Our system ensures:
 
@@ -13,8 +13,8 @@
 
   - Smart traffic light control to give ambulances a clear path.
 
-⚡ Key Features
-1️⃣ Accident Detection
+##⚡ Key Features
+#1️⃣ Accident Detection
 
   - Monitors OBD-II / IoT sensor data.
 
@@ -22,7 +22,7 @@
 
   - Triggers an automatic accident alert with GPS coordinates.
 
-2️⃣ Nearest Hospital Navigation
+#2️⃣ Nearest Hospital Navigation
 
   - Uses Mapbox API to locate the closest hospitals.
 
@@ -30,7 +30,7 @@
 
   - One-click Start Navigation for ambulance drivers.
 
-3️⃣ Smart Traffic Management
+#3️⃣ Smart Traffic Management
 
   - Accident alert integrates with traffic light IoT systems.
 
@@ -38,7 +38,7 @@
 
   - Ensures fast, uninterrupted travel to hospitals.
 
-🧠 Agentic AI Design
+#🧠 Agentic AI Design
 
   - Golden Hours is a Goal-Based Rational Agent:
 
@@ -48,13 +48,13 @@
 
   - Acts: Sends alerts, starts navigation, controls traffic lights.
 
-🛠️ Tech Stack
+#🛠️ Tech Stack
 
   - Frontend: Flutter (Android App for ambulance staff).
 
   - Backend: Python (Flask / FastAPI).
 
-APIs:
+#APIs:
 
   - Mapbox (Hospitals & Navigation).
 
@@ -62,7 +62,7 @@ APIs:
 
   - Database: Firebase / SQLite (for accident logs & hospital data).
 
-🚀 How It Works (Flow)
+#🚀 How It Works (Flow)
 
   - Vehicle sensors → detect accident.
 
@@ -75,7 +75,7 @@ APIs:
   - Traffic signals on the route turn green automatically.
 
 
-🏆 Scocial Impact
+##🏆 Scocial Impact
 
   - Reduces emergency response time.
   
