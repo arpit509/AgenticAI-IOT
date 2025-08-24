@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.hackproj"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -41,4 +41,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+
+dependencies {
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
 }
