@@ -14,7 +14,7 @@
   - Smart traffic light control to give ambulances a clear path.
 
 ## ⚡ Key Features
-## 1️⃣ Accident Detection
+## 1️⃣ Accident Detection (Reactive Agent)
 
   - Monitors OBD-II / IoT sensor data.
 
@@ -22,7 +22,7 @@
 
   - Triggers an automatic accident alert with GPS coordinates.
 
-## 2️⃣ Nearest Hospital Navigation
+## 2️⃣ Nearest Hospital Navigation (Goal-based Agent)
 
   - Uses Mapbox API to locate the closest hospitals.
 
@@ -30,7 +30,7 @@
 
   - One-click Start Navigation for ambulance drivers.
 
-## 3️⃣ Smart Traffic Management
+## 3️⃣ Smart Traffic Management (Utility-based Agent)
 
   - Accident alert integrates with traffic light IoT systems.
 
