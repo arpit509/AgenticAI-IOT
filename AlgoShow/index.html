@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emergency Vehicle Priority – Intersection Simulation</title>
+  <style>
+    :root {
+      --bg: #0e1116;
+      --panel: #151a21;
+      --ink: #e7edf5;
+      --muted: #98a2b3;
+      --ok: #47d16a;
+      --warn: #ffd54d;
+      --stop: #ff4d4d;
+      --accent: #6ea8fe;
+    }
+    html, body {
+      margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+      font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    .wrap {
+      display: grid; grid-template-columns: 320px 1fr; gap: 12px; height: 100%; padding: 12px;
+      box-sizing: border-box;
+    }
+    .panel {
+      background: var(--panel); border: 1px solid #1f2630; border-radius: 16px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    h1 { font-size: 16px; margin: 0 0 8px; font-weight: 700; }
+    .muted { color: var(--muted); }
+    .row { display:flex; align-items:center; gap:8px; margin:8px 0; flex-wrap: wrap; }
+    button, select, input[type="range"] {
+      background:#11161d; color:var(--ink); border:1px solid #2a3340; border-radius:10px; padding:8px 10px;
+    }
+    button { cursor:pointer }
+    button:active { transform: translateY(1px) }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    canvas { width: 100%; height: 100%; background:#0a0d12; border:1px solid #1f2630; border-radius:16px; display:block; cursor: crosshair; }
+    .legend { display:grid; grid-template-columns: 14px auto; gap:8px 10px; align-items:center; }
+    .dot { width:12px; height:12px; border-radius:50%; }
+    .g { background:var(--ok) } .y { background:var(--warn) } .r { background:var(--stop) } .b { background:var(--accent) }
+    .kbd { background:#0b0f15; border:1px solid #2a3340; border-radius:6px; padding:2px 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-content {
+        background: var(--panel); border: 1px solid #1f2630; border-radius: 16px; padding: 20px; width: 90%; max-width: 600px;
+        max-height: 80vh; overflow-y: auto;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-header h2 { font-size: 18px; margin: 0; }
+    .modal-close { background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer; }
+    .hidden { display: none; }
+    .spinner {
+      width: 40px; height: 40px; border: 4px solid #2a3340; border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 1s linear infinite; margin: 20px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .prose { line-height: 1.6; }
+    .prose h3 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 600; }
+    .prose strong { font-weight: 600; color: var(--ink); }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+    .stats-label { color: var(--muted); }
+    .stats-value { font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel" style="display:flex; flex-direction:column; gap:10px;">
+      <h1>🚑 Emergency-Priority Signals</h1>
+      <div class="muted">Click and drag on the map to draw a path for the ambulance, then press "Start Trip".</div>
+
+      <div class="row">
+        <button id="btnReset">Reset</button>
+        <button id="btnStart" disabled>Start Trip</button>
+        <button id="btnPause">Pause</button>
+        <button id="btnReport" class="hidden">✨ Generate Incident Report</button>
+      </div>
+      <div class="row">
+        <label>Speed <span id="speedLabel" class="kbd">120</span></label>
+        <input id="speed" type="range" min="40" max="240" value="120" />
+      </div>
+      <div class="row">
+        <label><input id="autoCycle" type="checkbox" checked /> Normal signal cycle</label>
+      </div>
+      <div class="row">
+        <label><input id="showZones" type="checkbox" /> Show trigger radius</label>
+      </div>
+
+      <div class="panel" style="background:#0f141b;">
+        <div class="legend">
+          <span class="dot g"></span><span>Green (go)</span>
+          <span class="dot r"></span><span>Red (stop)</span>
+          <span class="dot b"></span><span>Ambulance</span>
+        </div>
+      </div>
+      
+      <!-- Performance Metrics -->
+      <div id="statsPanel" class="panel" style="background:#0f141b;">
+        <h2>Performance Metrics</h2>
+        <div class="stats-grid">
+            <span class="stats-label">Travel Time:</span>
+            <span id="statTime" class="stats-value">0.0s</span>
+            <span class="stats-label">Distance:</span>
+            <span id="statDist" class="stats-value">0m</span>
+            <span class="stats-label">Time Saved:</span>
+            <span id="statSaved" class="stats-value" style="color: var(--ok);">~0.0s</span>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="panel">
+      <canvas id="view" width="1100" height="700"></canvas>
+    </section>
+  </div>
+  
+  <!-- Gemini Report Modal -->
+  <div id="reportModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Incident Report</h2>
+        <button id="closeReportModal" class="modal-close">&times;</button>
+      </div>
+      <div id="reportBody">
+        <div class="spinner"></div>
+        <div id="reportText" class="prose"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- World layout ------------------------------------------------------
+    const canvas = document.getElementById('view');
+    const ctx = canvas.getContext('2d');
+
+    const GRID = { cols: 3, rows: 3, spacing: 260, margin: 160 };
+    const roads = {
+      vertical: Array.from({ length: GRID.cols }, (_, i) => GRID.margin + i * GRID.spacing),
+      horizontal: Array.from({ length: GRID.rows }, (_, i) => GRID.margin + i * GRID.spacing)
+    };
+
+    const intersections = [];
+    for (const x of roads.vertical) {
+      for (const y of roads.horizontal) {
+        intersections.push({ x, y, r: 95,
+          EW: 'G', NS: 'R',
+          cycleTimer: Math.random() * 4.5, // Stagger lights
+          cycleDur: 4.5,
+          emergency: false,
+          emergencyAxis: null,
+        });
+      }
+    }
+
+    // --- Ambulance ---------------------------------------------------------
+    const ambulance = {
+      x: roads.vertical[0],
+      y: roads.horizontal[0],
+      w: 24, h: 14,
+      speed: 120,
+      path: [],
+      startLocation: null,
+      target: null,
+      paused: false,
+      isEnRoute: false
+    };
+    
+    // --- Civilian Traffic --------------------------------------------------
+    let traffic = [];
+    const TRAFFIC_DENSITY = 12;
+    const CAR_SPEED = 60;
+    const CAR_COLORS = ['#ffadad', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#a0c4ff', '#bdb2ff'];
+
+    function spawnCar() {
+        if (traffic.length >= TRAFFIC_DENSITY) return;
+        const edge = Math.floor(Math.random() * 4);
+        let x, y, vx, vy;
+        const roadH = roads.horizontal[Math.floor(Math.random() * roads.horizontal.length)];
+        const roadV = roads.vertical[Math.floor(Math.random() * roads.vertical.length)];
+
+        switch(edge) {
+            case 0: x = -20; y = roadH; vx = CAR_SPEED; vy = 0; break;
+            case 1: x = canvas.width + 20; y = roadH; vx = -CAR_SPEED; vy = 0; break;
+            case 2: x = roadV; y = -20; vx = 0; vy = CAR_SPEED; break;
+            case 3: x = roadV; y = canvas.height + 20; vx = 0; vy = -CAR_SPEED; break;
+        }
+        traffic.push({ x, y, vx, vy, w: 20, h: 12, color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], waiting: false });
+    }
+    setInterval(spawnCar, 2000);
+
+    // --- Performance Stats -------------------------------------------------
+    const stats = {
+        startTime: 0,
+        travelTime: 0,
+        distance: 0,
+        timeSaved: 0,
+    };
+
+    // --- UI & Path Drawing -------------------------------------------------
+    let isDrawing = false;
+    let customPath = [];
+
+    const ui = {
+      autoCycle: document.getElementById('autoCycle'),
+      showZones: document.getElementById('showZones'),
+      speed: document.getElementById('speed'),
+      speedLabel: document.getElementById('speedLabel'),
+      btnReset: document.getElementById('btnReset'),
+      btnStart: document.getElementById('btnStart'),
+      btnPause: document.getElementById('btnPause'),
+      btnReport: document.getElementById('btnReport'),
+      reportModal: document.getElementById('reportModal'),
+      closeReportModal: document.getElementById('closeReportModal'),
+      reportSpinner: document.querySelector('#reportBody .spinner'),
+      reportText: document.getElementById('reportText'),
+      statTime: document.getElementById('statTime'),
+      statDist: document.getElementById('statDist'),
+      statSaved: document.getElementById('statSaved'),
+    };
+
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+    function snapToRoad(pt){
+      const vx = roads.vertical.reduce((best, x)=> Math.abs(pt.x-x) < Math.abs(pt.x-best) ? x : best, roads.vertical[0]);
+      const hy = roads.horizontal.reduce((best, y)=> Math.abs(pt.y-y) < Math.abs(pt.y-best) ? y : best, roads.horizontal[0]);
+      const dv = Math.abs(pt.x - vx);
+      const dh = Math.abs(pt.y - hy);
+      return (dv < dh) ? { x: vx, y: clamp(pt.y, roads.horizontal[0], roads.horizontal.at(-1)) }
+                       : { x: clamp(pt.x, roads.vertical[0], roads.vertical.at(-1)), y: hy };
+    }
+
+    function resetSimulation() {
+        ambulance.x = roads.vertical[0];
+        ambulance.y = roads.horizontal[0];
+        ambulance.path = [];
+        ambulance.isEnRoute = false;
+        ambulance.paused = false;
+        customPath = [];
+        ui.btnReport.classList.add('hidden');
+        ui.btnStart.disabled = true;
+        ui.btnPause.textContent = 'Pause';
+        traffic = [];
+        stats.travelTime = 0;
+        stats.distance = 0;
+        stats.timeSaved = 0;
+    }
+
+    ui.speed.addEventListener('input', ()=>{
+      ambulance.speed = +ui.speed.value; ui.speedLabel.textContent = ui.speed.value;
+    });
+
+    ui.btnReset.addEventListener('click', resetSimulation);
+
+    ui.btnStart.addEventListener('click', () => {
+        if (customPath.length < 2) return;
+        ambulance.path = [...customPath];
+        ambulance.x = customPath[0].x;
+        ambulance.y = customPath[0].y;
+        ambulance.startLocation = { ...customPath[0] };
+        ambulance.target = { ...customPath[customPath.length - 1] };
+        ambulance.isEnRoute = true;
+        
+        stats.startTime = performance.now();
+        stats.distance = ambulance.path.reduce((sum, p, i) => sum + (i > 0 ? Math.hypot(p.x - ambulance.path[i-1].x, p.y - ambulance.path[i-1].y) : 0), 0);
+        
+        ui.btnStart.disabled = true;
+    });
+
+    ui.btnPause.addEventListener('click', ()=>{
+      ambulance.paused = !ambulance.paused;
+      ui.btnPause.textContent = ambulance.paused ? 'Resume' : 'Pause';
+    });
+    
+    function getCanvasMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        return { x, y };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (ambulance.isEnRoute) return;
+        isDrawing = true;
+        customPath = [snapToRoad(getCanvasMousePos(e))];
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing || ambulance.isEnRoute) return;
+        const currentPoint = snapToRoad(getCanvasMousePos(e));
+        const lastPoint = customPath[customPath.length - 1];
+        if (Math.hypot(currentPoint.x - lastPoint.x, currentPoint.y - lastPoint.y) > 20) {
+            customPath.push(currentPoint);
+        }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+        if (ambulance.isEnRoute) return;
+        isDrawing = false;
+        if (customPath.length > 1) {
+            ui.btnStart.disabled = false;
+        }
+    });
+    
+    ui.btnReport.addEventListener('click', handleGenerateReport);
+    ui.closeReportModal.addEventListener('click', () => ui.reportModal.classList.add('hidden'));
+
+    async function callGemini(prompt) {
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+        let retries = 3, delay = 1000;
+        while (retries > 0) {
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) return result.candidates[0].content.parts[0].text;
+                }
+            } catch (error) { console.error("API call failed:", error); }
+            retries--; await new Promise(resolve => setTimeout(resolve, delay)); delay *= 2;
+        }
+        return "Error: Unable to generate report.";
+    }
+
+    async function handleGenerateReport() {
+        ui.reportModal.classList.remove('hidden');
+        ui.reportText.innerHTML = '';
+        ui.reportSpinner.style.display = 'block';
+        const startPt = `(${Math.round(ambulance.startLocation.x)}, ${Math.round(ambulance.startLocation.y)})`;
+        const endPt = `(${Math.round(ambulance.target.x)}, ${Math.round(ambulance.target.y)})`;
+        const prompt = `Generate a creative but professional-sounding incident report for an ambulance dispatch in a gridded city. - **Unit Dispatched:** Medic 1 - **Dispatch Point:** A hospital near coordinates ${startPt}. - **Destination:** An emergency scene at coordinates ${endPt}. - **Task:** Be creative about the nature of the emergency based on the destination coordinates. For example, a location with a high Y-coordinate could be "uptown," while a low X-coordinate could be on the "west side." - **Format:** Use Markdown. Include a main title, a few key details as a list (like Time, Status), and 2-3 paragraphs describing the response and situation.`;
+        const generatedText = await callGemini(prompt);
+        ui.reportSpinner.style.display = 'none';
+        let htmlText = generatedText.replace(/^# (.*$)/gim, '<h2>$1</h2>').replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>').replace(/\* (.*$)/gim, '<li>$1</li>').replace(/\n/g, '<br>');
+        if (htmlText.includes('<li>')) {
+            htmlText = htmlText.replace(/<li>/, '<ul><li>') + '</ul>';
+            htmlText = htmlText.replace(/<\/ul><br>/, '</ul>');
+        }
+        ui.reportText.innerHTML = htmlText;
+    }
+
+    function updateSignals(dt){
+      for (const it of intersections){
+        if (it.emergency) continue;
+        if (!ui.autoCycle.checked) continue;
+        it.cycleTimer += dt;
+        if (it.cycleTimer >= it.cycleDur){
+          it.cycleTimer = 0;
+          if (it.EW === 'G'){ it.EW='R'; it.NS='G'; } else { it.EW='G'; it.NS='R'; }
+        }
+      }
+    }
+
+    function applyEmergencyControl(){
+      let best = null; let bestDist = Infinity; let bestAxis = null;
+      for (const it of intersections){
+        const dx = ambulance.x - it.x;
+        const dy = ambulance.y - it.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist <= it.r && ambulance.isEnRoute){
+          const axis = Math.abs(dx) > Math.abs(dy) ? 'EW' : 'NS';
+          if (dist < bestDist){ best = it; bestDist = dist; bestAxis = axis; }
+        }
+      }
+      for (const it of intersections){
+        if (it === best){
+          if (!it.emergency || it.emergencyAxis !== bestAxis){
+            it.emergency = true; it.emergencyAxis = bestAxis; it.cycleTimer = 0;
+            if (bestAxis === 'EW'){ it.EW='G'; it.NS='R'; } else { it.EW='R'; it.NS='G'; }
+          }
+        } else {
+          if (it.emergency){
+            const dx = ambulance.x - it.x, dy = ambulance.y - it.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > it.r + 10){
+              it.emergency = false; it.emergencyAxis = null; it.cycleTimer = 0;
+              it.EW='G'; it.NS='R';
+            }
+          }
+        }
+      }
+    }
+
+    function advanceAmbulance(dt){
+      if (ambulance.paused || !ambulance.isEnRoute) return;
+      if (ambulance.path.length <= 1) {
+        if (ambulance.isEnRoute) {
+            ambulance.isEnRoute = false;
+            ui.btnReport.classList.remove('hidden');
+            const conventionalTime = (stats.distance / CAR_SPEED) + (intersections.length * 2.5);
+            stats.timeSaved = conventionalTime - stats.travelTime;
+        }
+        return;
+      }
+      let [sx, sy] = [ambulance.x, ambulance.y];
+      let [nx, ny] = [ambulance.path[1].x, ambulance.path[1].y];
+      const dx = nx - sx, dy = ny - sy;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 1){
+        ambulance.path.shift();
+        return;
+      }
+      const step = Math.min(dist, ambulance.speed * dt);
+      const ux = dx / dist, uy = dy / dist;
+      ambulance.x += ux * step; ambulance.y += uy * step;
+      stats.travelTime = (performance.now() - stats.startTime) / 1000;
+    }
+    
+    function advanceTraffic(dt) {
+        if (ambulance.paused) return;
+        traffic.forEach(car => {
+            car.waiting = false;
+            let nextIntersection = null;
+            let distToNext = Infinity;
+
+            for (const it of intersections) {
+                const isApproachingX = car.vx !== 0 && Math.sign(it.x - car.x) === Math.sign(car.vx);
+                const isApproachingY = car.vy !== 0 && Math.sign(it.y - car.y) === Math.sign(car.vy);
+                if ((isApproachingX && Math.abs(car.y - it.y) < 5) || (isApproachingY && Math.abs(car.x - it.x) < 5)) {
+                    const dist = Math.hypot(car.x - it.x, car.y - it.y);
+                    if (dist < distToNext) {
+                        distToNext = dist;
+                        nextIntersection = it;
+                    }
+                }
+            }
+
+            if (nextIntersection && distToNext < 40) {
+                const isHorizontal = car.vx !== 0;
+                const light = isHorizontal ? nextIntersection.EW : nextIntersection.NS;
+                if (light === 'R') {
+                    car.waiting = true;
+                }
+            }
+
+            if (!car.waiting) {
+                car.x += car.vx * dt;
+                car.y += car.vy * dt;
+            }
+        });
+        traffic = traffic.filter(c => c.x > -30 && c.x < canvas.width + 30 && c.y > -30 && c.y < canvas.height + 30);
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width, canvas.height);
+      ctx.lineWidth = 38; ctx.strokeStyle = '#1e2632'; ctx.lineCap = 'round';
+      for (const x of roads.vertical){ ctx.beginPath(); ctx.moveTo(x, 80); ctx.lineTo(x, canvas.height-80); ctx.stroke(); }
+      for (const y of roads.horizontal){ ctx.beginPath(); ctx.moveTo(80, y); ctx.lineTo(canvas.width-80, y); ctx.stroke(); }
+      ctx.lineWidth = 2; ctx.setLineDash([10, 10]); ctx.strokeStyle = '#384657';
+      for (const x of roads.vertical){ ctx.beginPath(); ctx.moveTo(x, 80); ctx.lineTo(x, canvas.height-80); ctx.stroke(); }
+      for (const y of roads.horizontal){ ctx.beginPath(); ctx.moveTo(80, y); ctx.lineTo(canvas.width-80, y); ctx.stroke(); }
+      ctx.setLineDash([]);
+      
+      traffic.forEach(car => {
+          ctx.fillStyle = car.color;
+          ctx.beginPath();
+          ctx.roundRect(car.x - car.w/2, car.y - car.h/2, car.w, car.h, 4);
+          ctx.fill();
+      });
+
+      for (const it of intersections){
+        if (ui.showZones.checked){
+          ctx.beginPath(); ctx.arc(it.x, it.y, it.r, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(110,168,254,0.08)'; ctx.fill();
+          ctx.strokeStyle = 'rgba(110,168,254,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+        }
+        ctx.fillStyle = '#121821'; ctx.strokeStyle = '#243041'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(it.x-30, it.y-30, 60, 60, 10); ctx.fill(); ctx.stroke();
+        drawLight(it.x-40, it.y, it.EW==='G' ? 'G' : 'R');
+        drawLight(it.x+40, it.y, it.EW==='G' ? 'G' : 'R');
+        drawLight(it.x, it.y-40, it.NS==='G' ? 'G' : 'R');
+        drawLight(it.x, it.y+40, it.NS==='G' ? 'G' : 'R');
+        if (it.emergency){
+          ctx.fillStyle = 'rgba(255,213,77,0.25)';
+          ctx.beginPath(); ctx.arc(it.x, it.y, 18, 0, Math.PI*2); ctx.fill();
+        }
+      }
+      
+      const path_to_draw = ambulance.isEnRoute ? ambulance.path : customPath;
+      if (path_to_draw.length > 1){
+        ctx.beginPath();
+        const start_x = ambulance.isEnRoute ? ambulance.x : path_to_draw[0].x;
+        const start_y = ambulance.isEnRoute ? ambulance.y : path_to_draw[0].y;
+        ctx.moveTo(start_x, start_y);
+        for (let i=1; i < path_to_draw.length; i++) {
+            ctx.lineTo(path_to_draw[i].x, path_to_draw[i].y);
+        }
+        ctx.lineWidth = 3; ctx.strokeStyle = '#6ea8fe'; ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.translate(ambulance.x, ambulance.y);
+      ctx.fillStyle = '#cfe8ff';
+      ctx.strokeStyle = '#9fc3f6';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(-ambulance.w/2, -ambulance.h/2, ambulance.w, ambulance.h, 3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e53935';
+      ctx.fillRect(-4, -6, 8, 12);
+      ctx.fillRect(-6, -4, 12, 8);
+      ctx.fillStyle = '#6ea8fe'; ctx.fillRect(ambulance.w/2-6, -ambulance.h/2-6, 10, 6);
+      ctx.restore();
+      
+      if (ambulance.target) {
+        ctx.beginPath(); ctx.arc(ambulance.target.x, ambulance.target.y, 6, 0, Math.PI*2);
+        ctx.fillStyle = '#6ea8fe'; ctx.fill();
+      }
+      
+      ui.statTime.textContent = `${stats.travelTime.toFixed(1)}s`;
+      ui.statDist.textContent = `${(stats.distance / 100).toFixed(2)}km`;
+      ui.statSaved.textContent = `~${Math.max(0, stats.timeSaved).toFixed(1)}s`;
+    }
+
+    function drawLight(x,y,state){
+      ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2);
+      ctx.fillStyle = state==='G' ? '#47d16a' : '#ff4d4d';
+      ctx.fill();
+      ctx.strokeStyle = '#0b0f14'; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    let last = performance.now();
+    function frame(now){
+      const dt = Math.min(0.05, (now - last)/1000);
+      last = now;
+      updateSignals(dt);
+      applyEmergencyControl();
+      advanceAmbulance(dt);
+      advanceTraffic(dt);
+      draw();
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    if (!CanvasRenderingContext2D.prototype.roundRect){
+      CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r){
+        const rr = Array.isArray(r) ? r : [r,r,r,r];
+        this.beginPath(); this.moveTo(x+rr[0], y); this.arcTo(x+w, y, x+w, y+h, rr[1]);
+        this.arcTo(x+w, y+h, x, y+h, rr[2]); this.arcTo(x, y+h, x, y, rr[3]);
+        this.arcTo(x, y, x+w, y, rr[0]); this.closePath();
+      }
+    }
+  </script>
+</body>
+</html>
