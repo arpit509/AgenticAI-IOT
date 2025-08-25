@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'app.dart';
-import 'account.dart';
+import 'package:hackproj/account.dart';
+import 'package:hackproj/app.dart';
+import 'package:hackproj/ai_report.dart'; // ✅ Import AI Report page
 
 void main() => runApp(const MyApp());
 
@@ -52,7 +53,26 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   void initState() {
     super.initState();
-    _pages = [const HomePage(), const AccountsPage()];
+    _pages = [
+      const HomePage(),
+      const SampleNavigationApp(),
+      const AIReportPage(), // ✅ Added AI Report page
+      const AccountsPage(),
+    ];
+  }
+
+  void _onItemTapped(int index) {
+    if (index == 3) {
+      // ✅ Updated Accounts page index
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const AccountsPage()),
+      );
+    } else {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
   }
 
   @override
@@ -83,10 +103,14 @@ class _LandingScreenState extends State<LandingScreen> {
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-
+        onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Maps'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.medical_services),
+            label: 'AI Report',
+          ), // ✅ New tab
           BottomNavigationBarItem(
             icon: Icon(Icons.account_circle),
             label: 'Accounts',
