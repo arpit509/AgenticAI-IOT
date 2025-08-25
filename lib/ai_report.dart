@@ -58,7 +58,7 @@ class _AIReportPageState extends State<AIReportPage> {
         Uri.parse("https://openrouter.ai/api/v1/chat/completions"),
         headers: {
           "Authorization":
-              "Bearer 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",
+              "Bearer in env file",
           "Content-Type": "application/json",
         },
         body: json.encode({
