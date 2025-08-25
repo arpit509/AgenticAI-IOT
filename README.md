@@ -38,6 +38,14 @@
 
   - Ensures fast, uninterrupted travel to hospitals.
 
+## 4️⃣ Report Writting on the patient health
+
+  - Patient report are necessary for many procedures such as he is diabetic or not, cause of injury and the observation made by ambulance personal.
+
+  - Patient current health shall be given to the doctor so he can easily make his predictions and check for potential dangers.
+
+  - 
+
 ## 🧠 Agentic AI Design
 
   - Golden Hours is a Goal-Based Rational Agent:
@@ -80,6 +88,8 @@
   - Reduces emergency response time.
   
   - Saves lives during the Golden Hour.
+
+  - Lesser Legal Troubles as AI automatically finds and report a crash.
   
   - Scalable to smart cities & intelligent traffic systems.
 
